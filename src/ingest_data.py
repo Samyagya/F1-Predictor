@@ -64,7 +64,7 @@ def process_season(year):
             laps_cols = ['Driver', 'LapTime', 'LapNumber', 'Stint', 'PitOutTime', 
                          'PitInTime', 'Sector1Time', 'Sector2Time', 'Sector3Time', 
                          'SpeedI1', 'SpeedI2', 'SpeedFL', 'SpeedST', 'Compound', 
-                         'TyreLife', 'FreshTyre', 'Team', 'TrackStatus']
+                         'TyreLife', 'FreshTyre', 'Team', 'TrackStatus', 'Time']
             # Only save columns that exist (sometimes Speed is missing)
             avail_cols = [c for c in laps_cols if c in laps.columns]
             laps[avail_cols].to_csv(os.path.join(save_path, 'laps.csv'), index=False)

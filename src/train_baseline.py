@@ -8,7 +8,7 @@ import joblib  # To save the trained model
 import os
 
 # --- CONFIGURATION ---
-DATA_PATH = os.path.join('data', 'processed', 'f1_training_data.csv')
+DATA_PATH = os.path.join('data', 'processed', 'f1_training_data_v2.csv')
 MODEL_DIR = 'models'
 os.makedirs(MODEL_DIR, exist_ok=True)
 
@@ -26,7 +26,7 @@ def train_model():
 
     # Select Features (Inputs) and Target (Output)
     # We want to predict 'LapTime_Seconds' based on:
-    features = ['Driver', 'Circuit', 'Compound', 'TyreLife', 'LapNumber', 'Rainfall']
+    features = ['Driver', 'Circuit', 'Compound', 'TyreLife', 'LapNumber', 'Rainfall', 'FuelWeight']
     target = 'LapTime_Seconds'
 
     # Handle Text Columns (Driver, Circuit, Compound)

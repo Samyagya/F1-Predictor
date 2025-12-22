@@ -53,10 +53,10 @@ def train_model():
     # --- TRAINING ---
     print("3. Training Model (Gradient Boosting)...")
     model = HistGradientBoostingRegressor(
-        max_iter=100, 
-        learning_rate=0.1, 
-        max_depth=10, 
-        random_state=42
+        max_iter=300, 
+        learning_rate=0.05, 
+        max_depth=15, 
+        random_state=12
     )
     model.fit(X_train, y_train)
     print("   Model Trained!")

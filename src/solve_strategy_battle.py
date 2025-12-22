@@ -65,14 +65,14 @@ def get_stint_time(model, encoder, driver, circuit, compound, start_lap, end_lap
 def solve_battle():
     model, encoder = load_artifacts()
     
-    print("\n--- 🏁 STRATEGY SHOOTOUT (v2: PHYSICS ENABLED) ---")
+    print("\n--- 🏁 STRATEGY SHOOTOUT (v3: TRAFFIC ENABLED) ---")
     driver = input("Driver (e.g., VER): ").strip()
     circuit = input("Circuit (e.g., Sakhir): ").strip()
     
-    # GET ACCURATE PIT LOSS FOR THIS TRACK
     pit_loss = get_pit_loss(circuit)
-    print(f"   ℹ️  Pit Loss for {circuit}: {pit_loss}s")
+    traffic_penalty = 1.5  # Time lost overtaking cars after a pit stop
     
+    print(f"   ℹ️  Pit Loss: {pit_loss}s | Traffic Penalty: {traffic_penalty}s")
     print(f"\nAnalyzing optimal strategies for {driver} at {circuit}...")
     
     # --- PART 1: OPTIMIZE 1-STOP ---
@@ -82,15 +82,14 @@ def solve_battle():
     perms_1stop = list(itertools.product(COMPOUNDS, repeat=2))
     
     for c1, c2 in perms_1stop:
-        if c1 == c2: continue # Rule: Must use 2 compounds
+        if c1 == c2: continue 
         
-        # Test Pit Window (Lap 20 to 40)
         for pit_lap in range(20, 41, 2):
             t1 = get_stint_time(model, encoder, driver, circuit, c1, 1, pit_lap)
             t2 = get_stint_time(model, encoder, driver, circuit, c2, pit_lap + 1, TOTAL_LAPS)
             
-            # Use dynamic pit_loss
-            total = t1 + t2 + pit_loss
+            # 1-Stop Cost = 1 Pit Loss + 1 Traffic Event
+            total = t1 + t2 + pit_loss + traffic_penalty
             
             if total < best_1stop['Time']:
                 best_1stop = {'Time': total, 'Desc': f"{c1} ({pit_lap}) -> {c2}"}
@@ -101,15 +100,14 @@ def solve_battle():
     print(f"      Time: {m1}m {s1:05.2f}s")
 
     # --- PART 2: OPTIMIZE 2-STOP ---
-    print("\n2️⃣  Solving 2-Stop Strategies (Grandmaster Mode)...")
+    print("\n2️⃣  Solving 2-Stop Strategies...")
     best_2stop = {'Time': 999999, 'Desc': ''}
     
     perms_2stop = list(itertools.product(COMPOUNDS, repeat=3))
     
     for c1, c2, c3 in perms_2stop:
-        if len(set([c1, c2, c3])) < 2: continue # Rule check
+        if len(set([c1, c2, c3])) < 2: continue
         
-        # Test Coarse Pit Window
         for pit1 in range(12, 26, 4):
             t1 = get_stint_time(model, encoder, driver, circuit, c1, 1, pit1)
             
@@ -117,8 +115,8 @@ def solve_battle():
                 t2 = get_stint_time(model, encoder, driver, circuit, c2, pit1 + 1, pit2)
                 t3 = get_stint_time(model, encoder, driver, circuit, c3, pit2 + 1, TOTAL_LAPS)
                 
-                # Use dynamic pit_loss (x2)
-                total = t1 + t2 + t3 + (pit_loss * 2)
+                # 2-Stop Cost = 2 Pit Losses + 2 Traffic Events
+                total = t1 + t2 + t3 + (pit_loss * 2) + (traffic_penalty * 2)
                 
                 if total < best_2stop['Time']:
                     best_2stop = {'Time': total, 'Desc': f"{c1} ({pit1}) -> {c2} ({pit2}) -> {c3}"}
@@ -134,10 +132,10 @@ def solve_battle():
     
     if diff > 0:
         print(f"🚀 VERDICT: 2-STOP WINS by {diff:.2f} seconds!")
-        print(f"   Recommendation: Switch tyres twice to avoid the 'Cliff'.")
+        print(f"   (Even with traffic, speed is king.)")
     else:
         print(f"🛡️ VERDICT: 1-STOP WINS by {abs(diff):.2f} seconds!")
-        print(f"   Recommendation: Track position is king.")
+        print(f"   (Traffic made the 2-stop too risky!)")
     print("="*40)
 
 if __name__ == "__main__":

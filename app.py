@@ -13,34 +13,46 @@ except ImportError:
     st.error("Could not import 'src'. Make sure you are running this from the main folder!")
     st.stop()
 
-# --- CONSTANTS: 2025 GRID & CALENDAR ---
+# --- 2026 GRID ROSTER (CONFIRMED & PROJECTED) ---
 DRIVERS = {
+    # TOP TEAMS
     "Max Verstappen (Red Bull)": "VER",
-    "Lando Norris (McLaren)": "NOR",
+    "Isack Hadjar (Red Bull)": "HAD",   # Promoted
+    "Lewis Hamilton (Ferrari)": "HAM",  # The big move
     "Charles Leclerc (Ferrari)": "LEC",
-    "Lewis Hamilton (Ferrari)": "HAM",
+    "Lando Norris (McLaren)": "NOR",
     "Oscar Piastri (McLaren)": "PIA",
     "George Russell (Mercedes)": "RUS",
-    "Kimi Antonelli (Mercedes)": "ANT",
+    "Kimi Antonelli (Mercedes)": "ANT", # Rookie
+    
+    # ASTON & ALPINE
     "Fernando Alonso (Aston Martin)": "ALO",
     "Lance Stroll (Aston Martin)": "STR",
+    "Pierre Gasly (Alpine)": "GAS",
+    "Franco Colapinto (Alpine)": "COL", # New Signing
+    
+    # MIDFIELD / NEW ENTRIES
     "Carlos Sainz (Williams)": "SAI",
     "Alex Albon (Williams)": "ALB",
-    "Pierre Gasly (Alpine)": "GAS",
-    "Jack Doohan (Alpine)": "DOO",
+    "Nico Hulkenberg (Audi)": "HUL",    # New Team (ex-Sauber)
+    "Gabriel Bortoleto (Audi)": "BOR",  # Rookie
     "Esteban Ocon (Haas)": "OCO",
-    "Ollie Bearman (Haas)": "BEA",
-    "Nico Hulkenberg (Sauber)": "HUL",
-    "Gabriel Bortoleto (Sauber)": "BOR",
-    "Yuki Tsunoda (RB)": "TSU",
+    "Ollie Bearman (Haas)": "BEA",      # Rookie
     "Liam Lawson (RB)": "LAW",
-    "Isack Hadjar (RB)": "HAD"
+    "Arvid Lindblad (RB)": "LIN",       # Rookie
+    
+    # THE 11TH TEAM (CADILLAC)
+    "Sergio Perez (Cadillac)": "PER",   # New Team
+    "Valtteri Bottas (Cadillac)": "BOT"
 }
 
+# --- 2026 CALENDAR (24 RACES) ---
+# Note: Imola dropped, Madrid added.
 CIRCUITS = [
-    "Sakhir", "Jeddah", "Albert Park", "Suzuka", "Shanghai", "Miami",
-    "Imola", "Monaco", "Montreal", "Barcelona", "Red Bull Ring",
-    "Silverstone", "Hungaroring", "Spa", "Zandvoort", "Monza",
+    "Albert Park", "Shanghai", "Suzuka", "Sakhir", "Jeddah", 
+    "Miami", "Montreal", "Monaco", "Barcelona", "Red Bull Ring",
+    "Silverstone", "Spa", "Hungaroring", "Zandvoort", "Monza",
+    "Madrid", # NEW TRACK
     "Baku", "Singapore", "Austin", "Mexico City", "Interlagos",
     "Las Vegas", "Lusail", "Yas Marina"
 ]
@@ -76,7 +88,7 @@ def get_race_data(model, encoder, driver, circuit, compounds, pit_laps):
             penalty = calculate_tyre_cliff_penalty(compound, tyre_age)
             lap_time = base_time + penalty
             
-            # Pit Penalty (Entry + Stationary + Exit + Traffic)
+            # Pit Penalty
             if laps[j] in pit_laps:
                 lap_time += get_pit_loss(circuit) + 1.5
                 
@@ -88,12 +100,13 @@ def get_race_data(model, encoder, driver, circuit, compounds, pit_laps):
 st.set_page_config(page_title="F1 2026 Strategist", page_icon="🏎️", layout="wide")
 
 st.title("🏎️ F1 2026 Strategy Predictor")
-st.markdown("### AI-Powered Race Engineer | Physics v4.0 (Full Calendar)")
+st.markdown("### AI-Powered Race Engineer | Season 2026 Spec")
+st.caption("Updated with Madrid GP, Audi, Cadillac, and full Driver Market transfers.")
 
 # --- SIDEBAR ---
-st.sidebar.header("Race Settings")
+st.sidebar.header("2026 Race Settings")
 
-# 1. Driver Select (Display Name -> Code)
+# 1. Driver Select
 driver_name = st.sidebar.selectbox("Select Driver", list(DRIVERS.keys()))
 driver_code = DRIVERS[driver_name]
 
@@ -105,7 +118,7 @@ pit_loss = get_pit_loss(circuit_name)
 traffic = 1.5
 st.sidebar.divider()
 st.sidebar.markdown(f"""
-**📍 Track DNA: {circuit_name}**
+**📍 {circuit_name} Data**
 * Pit Loss: `{pit_loss}s`
 * Traffic Pen: `{traffic}s`
 """)
@@ -124,7 +137,6 @@ if st.button("🚀 Analyze Strategy", type="primary"):
     
     for c1, c2 in perms_1stop:
         if c1 == c2: continue
-        # Test generic pit lap
         pit_lap = 25 
         t1 = get_stint_time(model, encoder, driver_code, circuit_name, c1, 1, pit_lap)
         t2 = get_stint_time(model, encoder, driver_code, circuit_name, c2, pit_lap + 1, TOTAL_LAPS)

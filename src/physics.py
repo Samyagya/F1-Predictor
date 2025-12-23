@@ -1,14 +1,12 @@
 def get_pit_loss(circuit):
     """
-    Returns the estimated time lost in the pit lane for all 2025 circuits.
-    Includes Pit Entry, Speed Limit, and Pit Exit delta.
+    Returns the estimated time lost in the pit lane for the 2026 Calendar.
+    Data includes new tracks like Madrid.
     """
-    # Map common names to 2025 Calendar Standard
     lookup = {
         # --- HIGH PIT LOSS (>24s) ---
         'Silverstone': 29.0,
         'Singapore': 28.5,
-        'Imola': 28.0,
         'Paul Ricard': 27.0,
         'Lusail': 26.0,    # Qatar
         'Suzuka': 25.0,
@@ -18,7 +16,8 @@ def get_pit_loss(circuit):
         'Sakhir': 22.5,
         'Shanghai': 24.0,  # China
         'Miami': 23.0,
-        'Barcelona': 23.5, # Spain
+        'Barcelona': 23.0, # Spanish GP (Catalunya)
+        'Madrid': 23.5,    # NEW: Madrid Street Circuit (Est. similar to Valencia/Baku)
         'Las Vegas': 23.0,
         'Yas Marina': 23.0, # Abu Dhabi
         'Albert Park': 22.5, # Australia
@@ -26,43 +25,42 @@ def get_pit_loss(circuit):
         'Hungaroring': 22.0,
         'Zandvoort': 22.0,
         'Jeddah': 21.5,
+        'Austin': 22.5,    # COTA
         
         # --- LOW PIT LOSS (<21s) ---
-        'Spa': 21.0,       # Belgium
-        'Spa-Francorchamps': 21.0,
+        'Spa': 21.0,
         'Red Bull Ring': 20.5, # Austria
-        'Monza': 24.0,     # High speed entry, but long lane. Actually ~24s total impact
+        'Monza': 24.0,     # High speed entry impacts total delta
         'Interlagos': 20.5, # Brazil
         'Baku': 21.0,      # Azerbaijan
-        'Montreal': 19.5,  # Canada (Short pit lane)
-        'Monaco': 19.0     # Super short
+        'Montreal': 19.5,  # Canada
+        'Monaco': 19.0     # Shortest lane
     }
     
-    # Default to 22.5s (Average) if track is unknown
+    # Default to 22.5s if unknown
     return lookup.get(circuit, 22.5)
 
 def calculate_tyre_cliff_penalty(compound, age):
     """
     Calculates tyre degradation penalty with 'Cliff' logic.
+    2026 tyres might be slightly more durable, but the cliff is steeper.
     """
     penalty = 0.0
     
-    # 2025-Spec Tyre Limits (Approximate)
+    # 2026 Limits
     limits = {
-        'SOFT': 12,
-        'MEDIUM': 20,
-        'HARD': 32,
-        'INTERMEDIATE': 25,
-        'WET': 25
+        'SOFT': 14,     # slightly better than 2025
+        'MEDIUM': 22,
+        'HARD': 35,
+        'INTERMEDIATE': 28,
+        'WET': 28
     }
     
     limit = limits.get(compound.upper(), 25)
     
     if age > limit:
         over_limit = age - limit
-        # Penalty grows exponentially: 0.3s * (Over^2)
-        # 1 lap over = +0.3s
-        # 5 laps over = +7.5s
-        penalty = 0.3 * (over_limit ** 2)
+        # Steep Penalty: 0.35 * (Over^2)
+        penalty = 0.35 * (over_limit ** 2)
         
     return penalty

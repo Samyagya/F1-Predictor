@@ -19,41 +19,19 @@ except ImportError:
 # --- CONFIG ---
 st.set_page_config(page_title="F1 2026 Oracle", page_icon="🏎️", layout="wide")
 
-# --- FULL 2026 GRID (22 DRIVERS) ---
+# --- FULL 2026 GRID ---
 DRIVERS = {
-    # Red Bull
-    "Max Verstappen (Red Bull)": "VER",
-    "Isack Hadjar (Red Bull)": "HAD",
-    # Mercedes
-    "George Russell (Mercedes)": "RUS",
-    "Kimi Antonelli (Mercedes)": "ANT",
-    # Ferrari
-    "Charles Leclerc (Ferrari)": "LEC",
-    "Lewis Hamilton (Ferrari)": "HAM",
-    # McLaren
-    "Lando Norris (McLaren)": "NOR",
-    "Oscar Piastri (McLaren)": "PIA",
-    # Aston Martin
-    "Fernando Alonso (Aston Martin)": "ALO",
-    "Lance Stroll (Aston Martin)": "STR",
-    # Alpine
-    "Pierre Gasly (Alpine)": "GAS",
-    "Franco Colapinto (Alpine)": "COL",
-    # Williams
-    "Carlos Sainz (Williams)": "SAI",
-    "Alex Albon (Williams)": "ALB",
-    # RB (Racing Bulls)
-    "Liam Lawson (RB)": "LAW",
-    "Arvid Lindblad (RB)": "LIN",
-    # Haas
-    "Esteban Ocon (Haas)": "OCO",
-    "Ollie Bearman (Haas)": "BEA",
-    # Audi (Sauber)
-    "Nico Hulkenberg (Audi)": "HUL",
-    "Gabriel Bortoleto (Audi)": "BOR",
-    # Cadillac (New Team)
-    "Sergio Perez (Cadillac)": "PER",
-    "Valtteri Bottas (Cadillac)": "BOT"
+    "Max Verstappen (Red Bull)": "VER", "Isack Hadjar (Red Bull)": "HAD",
+    "George Russell (Mercedes)": "RUS", "Kimi Antonelli (Mercedes)": "ANT",
+    "Charles Leclerc (Ferrari)": "LEC", "Lewis Hamilton (Ferrari)": "HAM",
+    "Lando Norris (McLaren)": "NOR", "Oscar Piastri (McLaren)": "PIA",
+    "Fernando Alonso (Aston Martin)": "ALO", "Lance Stroll (Aston Martin)": "STR",
+    "Pierre Gasly (Alpine)": "GAS", "Franco Colapinto (Alpine)": "COL",
+    "Carlos Sainz (Williams)": "SAI", "Alex Albon (Williams)": "ALB",
+    "Liam Lawson (RB)": "LAW", "Arvid Lindblad (RB)": "LIN",
+    "Esteban Ocon (Haas)": "OCO", "Ollie Bearman (Haas)": "BEA",
+    "Nico Hulkenberg (Audi)": "HUL", "Gabriel Bortoleto (Audi)": "BOR",
+    "Sergio Perez (Cadillac)": "PER", "Valtteri Bottas (Cadillac)": "BOT"
 }
 
 CIRCUITS = [
@@ -62,6 +40,18 @@ CIRCUITS = [
     "Silverstone", "Hungaroring", "Spa", "Zandvoort", "Monza",
     "Baku", "Singapore", "Austin", "Mexico City", "Las Vegas", "Yas Marina"
 ]
+
+# --- HELPER: TIME FORMATTER (HH:MM:SS) ---
+def format_time(seconds):
+    """Converts seconds to '1h 32m 12.45s' format"""
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = seconds % 60
+    
+    if hours > 0:
+        return f"{hours}h {minutes}m {secs:05.2f}s"
+    else:
+        return f"{minutes}m {secs:05.2f}s"
 
 # --- HELPER: RUN ONE SCENARIO ---
 def run_scenario_analysis(driver_code, circuit_name, scenario_mode):
@@ -73,7 +63,7 @@ def run_scenario_analysis(driver_code, circuit_name, scenario_mode):
 # --- UI START ---
 st.title("🏎️ F1 2026 Strategy Oracle")
 
-# TABS FOR NAVIGATION
+# TABS
 tab1, tab2 = st.tabs(["🔮 Next Race Predictor", "🛠️ Strategy Workbench"])
 
 # =========================================================
@@ -83,7 +73,7 @@ with tab1:
     next_race = get_next_race()
     circuit_next = next_race['circuit']
     
-    # FORMAT DATE AS DD-MM-YYYY
+    # Format Date
     raw_date = datetime.strptime(next_race['date'], "%Y-%m-%d")
     formatted_date = raw_date.strftime("%d-%m-%Y")
     
@@ -95,56 +85,71 @@ with tab1:
         
         progress_bar = st.progress(0)
         results = []
-        
         driver_list = list(DRIVERS.items())
         total_drivers = len(driver_list)
         
-        # Simulate every driver
+        # Simulate Grid
         for i, (name, code) in enumerate(driver_list):
             strat, desc, time = run_scenario_analysis(code, circuit_next, "Standard Q3")
             
-            # Simple "Driver Skill" Bias (Optional tweak for realism)
-            # This helps separate top cars from backmarkers in a 'tie'
+            # Skill Bias (Optional)
             bias = 0
-            if code in ["VER", "HAM", "LEC", "NOR"]: bias = -5 # Top tier bonus
-            elif code in ["BOT", "HUL", "OCO"]: bias = +10 # Backmarker penalty
+            if code in ["VER", "HAM", "LEC", "NOR"]: bias = -5
+            elif code in ["BOT", "HUL", "OCO"]: bias = +10
             
             final_time = time + bias
             
             results.append({
                 "Driver": name,
                 "Strategy": strat,
-                "Time_Sec": final_time,
-                "Display_Time": f"{int(final_time//60)}m {final_time%60:.2f}s"
+                "Time_Sec": final_time # Keep raw float for sorting
             })
             progress_bar.progress((i + 1) / total_drivers)
             
         # Sort by Fastest Time
         results.sort(key=lambda x: x['Time_Sec'])
         
+        # CALCULATE GAPS & FORMAT TIME
+        winner_time = results[0]['Time_Sec']
+        
+        final_table = []
+        for res in results:
+            gap = res['Time_Sec'] - winner_time
+            
+            # Format Gap
+            if gap == 0:
+                gap_str = "LEADER"
+            else:
+                gap_str = f"+{gap:.3f}s"
+                
+            final_table.append({
+                "Driver": res['Driver'],
+                "Strategy": res['Strategy'],
+                "Race Time": format_time(res['Time_Sec']),
+                "Gap": gap_str
+            })
+        
         # --- DISPLAY PODIUM ---
         st.success("🏁 Simulation Complete!")
         
         c1, c2, c3 = st.columns(3)
-        with c2: # Winner (Center)
+        with c2: 
             st.markdown(f"### 🥇 1st Place")
-            st.metric(label=results[0]['Driver'], value=results[0]['Display_Time'])
-            
-        with c1: # 2nd (Left)
+            st.metric(label=final_table[0]['Driver'], value=final_table[0]['Race Time'])
+        with c1: 
             st.markdown(f"### 🥈 2nd Place")
-            st.metric(label=results[1]['Driver'], value=f"+{(results[1]['Time_Sec'] - results[0]['Time_Sec']):.2f}s")
-            
-        with c3: # 3rd (Right)
+            st.metric(label=final_table[1]['Driver'], value=final_table[1]['Gap'])
+        with c3: 
             st.markdown(f"### 🥉 3rd Place")
-            st.metric(label=results[2]['Driver'], value=f"+{(results[2]['Time_Sec'] - results[0]['Time_Sec']):.2f}s")
+            st.metric(label=final_table[2]['Driver'], value=final_table[2]['Gap'])
             
         # --- FULL CLASSIFICATION TABLE ---
         st.divider()
         st.subheader("Full Race Classification")
         
-        df_results = pd.DataFrame(results).drop(columns=['Time_Sec'])
-        df_results.index += 1
-        st.dataframe(df_results, use_container_width=True)
+        df_display = pd.DataFrame(final_table)
+        df_display.index += 1
+        st.dataframe(df_display, use_container_width=True)
 
 # =========================================================
 # TAB 2: STRATEGY WORKBENCH
@@ -171,8 +176,6 @@ with tab2:
         for title, mode, note in scenarios:
             with st.spinner(f"Simulating {title}..."):
                 strategy_type, strategy_desc, race_time = run_scenario_analysis(driver_code, sel_circuit, mode)
-                m = int(race_time // 60)
-                s = race_time % 60
                 
                 with st.container():
                     st.markdown(f"#### {title}")
@@ -181,5 +184,5 @@ with tab2:
                     with col_a:
                         st.success(f"**{strategy_type}:** {strategy_desc}")
                     with col_b:
-                        st.metric("Total Time", f"{m}m {s:05.2f}s")
+                        st.metric("Total Time", format_time(race_time))
                     st.divider()

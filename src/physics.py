@@ -41,17 +41,13 @@ def get_pit_loss(circuit):
     return lookup.get(circuit, 22.5)
 
 def calculate_tyre_cliff_penalty(compound, age):
-    """
-    Calculates tyre degradation penalty with 'Cliff' logic.
-    2026 tyres might be slightly more durable, but the cliff is steeper.
-    """
     penalty = 0.0
     
-    # 2026 Limits
+    # AGGRESSIVE BAHRAIN DEGRADATION
     limits = {
-        'SOFT': 14,     # slightly better than 2025
-        'MEDIUM': 22,
-        'HARD': 35,
+        'SOFT': 15,      # Fast but short life
+        'MEDIUM': 20,    # Good for 20 laps
+        'HARD': 25,      # NERFED: Was 35. Now dies at 25.
         'INTERMEDIATE': 28,
         'WET': 28
     }
@@ -60,7 +56,7 @@ def calculate_tyre_cliff_penalty(compound, age):
     
     if age > limit:
         over_limit = age - limit
-        # Steep Penalty: 0.35 * (Over^2)
+        # The "Cliff" is steep: 0.35s per lap squared
         penalty = 0.35 * (over_limit ** 2)
         
     return penalty

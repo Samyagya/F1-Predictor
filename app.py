@@ -8,7 +8,7 @@ import altair as alt
 # --- IMPORT BACKEND ---
 try:
     from src.physics import get_pit_loss, calculate_tyre_cliff_penalty
-    from src.solve_strategy_battle import get_stint_time, load_artifacts, TOTAL_LAPS
+    from src.solve_strategy_battle import get_stint_time, load_artifacts, TOTAL_LAPS, solve_scenario
     from src.tyre_strategy import get_race_start_tyres
 except ImportError:
     st.error("Could not import 'src'. Make sure you are running this from the main folder!")
@@ -37,49 +37,8 @@ def run_scenario_analysis(driver_code, circuit_name, scenario_mode):
     pit_loss = get_pit_loss(circuit_name)
     traffic = 1.5
     
-    # Get Inventory
-    tyres = get_race_start_tyres(driver_code, strategy_mode=scenario_mode)
-    tyre_indices = range(len(tyres))
-    
-    # 1-Stop Solver
-    best_1stop = {'Time': 999999, 'Desc': ''}
-    for idx1, idx2 in itertools.permutations(tyre_indices, 2):
-        s1, s2 = tyres[idx1], tyres[idx2]
-        if s1['compound'] == s2['compound']: continue
-        
-        # Check Lap 25 pit window
-        t1 = get_stint_time(model, encoder, driver_code, circuit_name, s1, 1, 25)
-        t2 = get_stint_time(model, encoder, driver_code, circuit_name, s2, 26, TOTAL_LAPS)
-        total = t1 + t2 + pit_loss + traffic
-        
-        if total < best_1stop['Time']:
-            best_1stop = {'Time': total, 'Desc': f"{s1['compound']} ({s1['status']}) -> {s2['compound']} ({s2['status']})"}
-
-    # 2-Stop Solver
-    best_2stop = {'Time': 999999, 'Desc': ''}
-    # Optimized permutation filter
-    valid_perms = [
-        p for p in itertools.permutations(tyre_indices, 3) 
-        if len({tyres[i]['compound'] for i in p}) >= 2
-    ]
-    
-    for idx1, idx2, idx3 in valid_perms:
-        s1, s2, s3 = tyres[idx1], tyres[idx2], tyres[idx3]
-        
-        # Fixed stops (Lap 18, 38)
-        t1 = get_stint_time(model, encoder, driver_code, circuit_name, s1, 1, 18)
-        t2 = get_stint_time(model, encoder, driver_code, circuit_name, s2, 19, 38)
-        t3 = get_stint_time(model, encoder, driver_code, circuit_name, s3, 39, TOTAL_LAPS)
-        total = t1 + t2 + t3 + (pit_loss * 2) + (traffic * 2)
-        
-        if total < best_2stop['Time']:
-            best_2stop = {'Time': total, 'Desc': f"{s1['compound']} ({s1['status']}) -> {s2['compound']} ({s2['status']}) -> {s3['compound']} ({s3['status']})"}
-            
-    # Return Winner
-    if best_2stop['Time'] < best_1stop['Time']:
-        return "2-STOP", best_2stop['Desc'], best_2stop['Time']
-    else:
-        return "1-STOP", best_1stop['Desc'], best_1stop['Time']
+    # Use the Backend Solver Logic directly
+    return solve_scenario(model, encoder, driver_code, circuit_name, pit_loss, traffic, "", scenario_mode)
 
 # --- DASHBOARD UI ---
 st.title("🏎️ F1 2026 Strategy Oracle")

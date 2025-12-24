@@ -1,6 +1,6 @@
-import google.generativeai as genai
-import json
 import os
+import json
+from groq import Groq
 from src.physics import get_pit_loss
 from src.solve_strategy_battle import solve_scenario, load_artifacts
 
@@ -18,10 +18,6 @@ DRIVER_CODE_MAP = {
 def run_strategy_simulation(driver_name: str, circuit: str, constraints_description: str = ""):
     """
     Calculates the optimal F1 strategy based on physics simulation.
-    Args:
-        driver_name: Name or nickname of the driver.
-        circuit: The race track.
-        constraints_description: Optional. Natural language description of tyre limits (e.g., "no new softs").
     """
     # 1. Resolve Driver Code
     code = DRIVER_CODE_MAP.get(driver_name.lower(), "VER") 
@@ -52,32 +48,105 @@ def run_strategy_simulation(driver_name: str, circuit: str, constraints_descript
         m = int(time // 60)
         s = time % 60
         
-        return {
+        return json.dumps({
             "strategy": strat,
             "details": desc,
             "race_time": f"{m}m {s:.2f}s",
             "driver": code,
             "circuit": circuit
-        }
+        })
     except Exception as e:
-        return {"error": str(e)}
+        return json.dumps({"error": str(e)})
 
 # --- THE AGENT CLASS ---
 class F1Agent:
     def __init__(self, api_key):
-        genai.configure(api_key=api_key)
-        self.tools = [run_strategy_simulation]
+        self.client = Groq(api_key=api_key)
         
-        # USE FLASH (Best for Speed/Cost)
-        self.model = genai.GenerativeModel(
-            model_name='gemini-1.5-flash',
-            tools=self.tools
-        )
-        self.chat = self.model.start_chat(enable_automatic_function_calling=True)
+        # System Prompt to teach Llama 3 how to behave
+        self.system_prompt = """
+        You are a Race Engineer for a Formula 1 team. 
+        You have access to a tool called 'run_strategy_simulation'.
+        
+        RULES:
+        1. If the user asks about strategy, race outcomes, or tyre usage, YOU MUST USE THE TOOL.
+        2. Do not guess. Run the simulation.
+        3. The tool takes JSON arguments: {"driver_name": "Max", "circuit": "Bahrain", "constraints_description": "..."}
+        4. Be concise and technical.
+        """
 
     def ask(self, user_input):
+        # 1. First call: Ask LLM what to do
+        messages = [
+            {"role": "system", "content": self.system_prompt},
+            {"role": "user", "content": user_input}
+        ]
+        
+        # Define the tool for Groq
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "run_strategy_simulation",
+                    "description": "Calculate optimal F1 strategy",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "driver_name": {"type": "string"},
+                            "circuit": {"type": "string"},
+                            "constraints_description": {"type": "string"}
+                        },
+                        "required": ["driver_name", "circuit"]
+                    }
+                }
+            }
+        ]
+
         try:
-            response = self.chat.send_message(user_input)
-            return response.text
+            response = self.client.chat.completions.create(
+                model="llama3-70b-8192",
+                messages=messages,
+                tools=tools,
+                tool_choice="auto"
+            )
+
+            response_message = response.choices[0].message
+            tool_calls = response_message.tool_calls
+
+            # 2. If LLM wants to use the tool, run it
+            if tool_calls:
+                messages.append(response_message) # Add the intent to history
+                
+                for tool_call in tool_calls:
+                    function_name = tool_call.function.name
+                    function_args = json.loads(tool_call.function.arguments)
+                    
+                    if function_name == "run_strategy_simulation":
+                        # RUN OUR PHYSICS CODE
+                        tool_response = run_strategy_simulation(
+                            driver_name=function_args.get("driver_name"),
+                            circuit=function_args.get("circuit"),
+                            constraints_description=function_args.get("constraints_description", "")
+                        )
+                        
+                        # Add result to history
+                        messages.append({
+                            "tool_call_id": tool_call.id,
+                            "role": "tool",
+                            "name": function_name,
+                            "content": tool_response,
+                        })
+
+                # 3. Second call: Get final answer based on tool result
+                final_response = self.client.chat.completions.create(
+                    model="llama3-70b-8192",
+                    messages=messages
+                )
+                return final_response.choices[0].message.content
+            
+            else:
+                # No tool needed (just chit-chat)
+                return response_message.content
+
         except Exception as e:
-            return f"Radio Interference (API Error): {str(e)}"
+            return f"Radio Failure: {str(e)}"

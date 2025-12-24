@@ -21,11 +21,11 @@ except Exception as e:
 st.set_page_config(page_title="F1 2026 Oracle", page_icon="🏎️", layout="wide")
 
 # --- SECRETS MANAGEMENT ---
-if "GEMINI_API_KEY" in st.secrets:
-    api_key = st.secrets["GEMINI_API_KEY"]
+if "GROQ_API_KEY" in st.secrets:
+    api_key = st.secrets["GROQ_API_KEY"]
 else:
     with st.sidebar:
-        api_key = st.text_input("Enter Gemini API Key", type="password")
+        api_key = st.text_input("Enter Groq API Key", type="password")
 
 # --- FULL 2026 GRID ---
 DRIVERS = {

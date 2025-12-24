@@ -2,7 +2,7 @@ import google.generativeai as genai
 import json
 import os
 from src.physics import get_pit_loss
-from src.solve_strategy_battle import solve_scenario, load_artifacts, DRIVERS_MAP_REVERSE # You might need to expose a map in solve_strategy
+from src.solve_strategy_battle import solve_scenario, load_artifacts # You might need to expose a map in solve_strategy
 
 # --- CONFIG ---
 # We need a map to convert "Max" -> "VER" inside the tool

@@ -1,21 +1,23 @@
 import sys
 import os
+import streamlit as st
 
+# Force python to find the 'src' folder
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-import streamlit as st
-import pandas as pd
-import os
-from datetime import datetime
-
-# --- IMPORT BACKEND ---
+# --- IMPORT BACKEND (DEBUG MODE) ---
 try:
     from src.physics import get_pit_loss
     from src.solve_strategy_battle import solve_scenario, load_artifacts
     from src.calendar_utils import get_next_race 
     from src.llm_agent import F1Agent
-except ImportError:
-    st.error("Could not import 'src'.")
+except Exception as e:
+    # This will print the ACTUAL error to the screen
+    st.error(f"CRITICAL ERROR: {e}")
+    
+    # This prints the full traceback (line numbers) to the screen so we can debug
+    import traceback
+    st.code(traceback.format_exc())
     st.stop()
 
 # --- CONFIG ---

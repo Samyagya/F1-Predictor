@@ -139,7 +139,7 @@ with tab1:
         st.dataframe(df_display, use_container_width=True)
 
 # =========================================================
-# TAB 2: STRATEGY WORKBENCH
+# TAB 2: STRATEGY WORKBENCH (RESTORED)
 # =========================================================
 with tab2:
     st.markdown("### Race Weekend Simulator")

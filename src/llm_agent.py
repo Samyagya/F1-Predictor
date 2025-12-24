@@ -68,9 +68,9 @@ class F1Agent:
         genai.configure(api_key=api_key)
         self.tools = [run_strategy_simulation]
         
-        # CHANGED MODEL TO 'gemini-pro' FOR STABILITY
+        # USE FLASH (Best for Speed/Cost)
         self.model = genai.GenerativeModel(
-            model_name='gemini-pro',
+            model_name='gemini-1.5-flash',
             tools=self.tools
         )
         self.chat = self.model.start_chat(enable_automatic_function_calling=True)

@@ -14,3 +14,15 @@ data/processed/
 
 # SECURITY: Secrets - NEVER REMOVE THIS LINE
 .streamlit/secrets.toml
+
+
+# --- AUTO-UPDATER SETTINGS ---
+# 1. Ignore temporary downloads in cache...
+cache/*
+# ...but keep the folder itself
+!cache/.gitkeep
+
+# 2. FORCE Git to track the race data
+# (This ensures the robot can save new races to your repo)
+!data/*.csv
+!models/*.pkl

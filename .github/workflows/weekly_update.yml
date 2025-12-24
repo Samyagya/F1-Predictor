@@ -1,0 +1,36 @@
+name: Weekly F1 Model Update
+
+on:
+  schedule:
+    # Run at 02:00 UTC every Monday (After Race Weekend)
+    - cron: '0 2 * * 1'
+  workflow_dispatch: # Allows you to run it manually button click
+
+permissions:
+  contents: write
+
+jobs:
+  update-model:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install Dependencies
+      run: |
+        pip install pandas scikit-learn joblib fastf1
+
+    - name: Run Auto-Updater
+      run: python src/auto_updater.py
+
+    - name: Commit and Push Changes
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: "🤖 Auto-Update: Retrained model with latest race data"
+        file_pattern: 'models/*.pkl data/*.csv'

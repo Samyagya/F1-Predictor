@@ -103,8 +103,9 @@ class F1Agent:
         ]
 
         try:
+            # CHANGED: Updated model name to the latest version
             response = self.client.chat.completions.create(
-                model="llama3-70b-8192",
+                model="llama-3.3-70b-versatile",
                 messages=messages,
                 tools=tools,
                 tool_choice="auto"
@@ -138,14 +139,14 @@ class F1Agent:
                         })
 
                 # 3. Second call: Get final answer based on tool result
+                # CHANGED: Updated model name here too
                 final_response = self.client.chat.completions.create(
-                    model="llama3-70b-8192",
+                    model="llama-3.3-70b-versatile",
                     messages=messages
                 )
                 return final_response.choices[0].message.content
             
             else:
-                # No tool needed (just chit-chat)
                 return response_message.content
 
         except Exception as e:

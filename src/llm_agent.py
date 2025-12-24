@@ -2,10 +2,9 @@ import google.generativeai as genai
 import json
 import os
 from src.physics import get_pit_loss
-from src.solve_strategy_battle import solve_scenario, load_artifacts # You might need to expose a map in solve_strategy
+from src.solve_strategy_battle import solve_scenario, load_artifacts
 
 # --- CONFIG ---
-# We need a map to convert "Max" -> "VER" inside the tool
 DRIVER_CODE_MAP = {
     "max": "VER", "verstappen": "VER", "lewis": "HAM", "hamilton": "HAM",
     "lando": "NOR", "norris": "NOR", "charles": "LEC", "leclerc": "LEC",
@@ -19,25 +18,19 @@ DRIVER_CODE_MAP = {
 def run_strategy_simulation(driver_name: str, circuit: str, constraints_description: str = ""):
     """
     Calculates the optimal F1 strategy based on physics simulation.
-    
     Args:
-        driver_name: Name or nickname of the driver (e.g., "Max", "Hamilton").
-        circuit: The race track (e.g., "Bahrain", "Monza").
-        constraints_description: Optional. Natural language description of tyre limits (e.g., "no new softs", "only 1 hard").
+        driver_name: Name or nickname of the driver.
+        circuit: The race track.
+        constraints_description: Optional. Natural language description of tyre limits (e.g., "no new softs").
     """
-    print(f"🛠️ LLM TOOL CALL: Simulating {driver_name} @ {circuit} (Constraints: {constraints_description})")
-    
     # 1. Resolve Driver Code
-    code = DRIVER_CODE_MAP.get(driver_name.lower(), "VER") # Default to Max if unknown
+    code = DRIVER_CODE_MAP.get(driver_name.lower(), "VER") 
     
     # 2. Resolve Circuit
     circuit = circuit.capitalize()
     if "bahrain" in circuit.lower(): circuit = "Sakhir"
     
-    # 3. Parse Constraints (We reuse the LLM's description or basic regex logic here if needed, 
-    # but for now let's use a simplified parser or pass empty if complex. 
-    # To keep it robust, we will map common LLM descriptions to our dict format)
-    
+    # 3. Parse Constraints 
     tyre_constraints = []
     desc = constraints_description.lower()
     
@@ -73,24 +66,12 @@ def run_strategy_simulation(driver_name: str, circuit: str, constraints_descript
 class F1Agent:
     def __init__(self, api_key):
         genai.configure(api_key=api_key)
-        
-        # Define the Tool for the LLM
         self.tools = [run_strategy_simulation]
         
-        # Initialize Model with Tools
+        # CHANGED MODEL TO 'gemini-pro' FOR STABILITY
         self.model = genai.GenerativeModel(
-            model_name='gemini-1.5-flash',
-            tools=self.tools,
-            system_instruction="""
-            You are a Race Engineer for a Formula 1 team. 
-            Your job is to answer strategic questions using the simulation tool provided.
-            
-            RULES:
-            1. ALWAYS use the `run_strategy_simulation` tool when asked about race outcomes, strategy, or tyre usage. Do not guess.
-            2. If the user provides constraints (e.g. "he has no softs"), pass that text to the tool.
-            3. Be concise, professional, and technical (like a real engineer on the radio).
-            4. If the tool returns a strategy, explain it clearly to the user.
-            """
+            model_name='gemini-pro',
+            tools=self.tools
         )
         self.chat = self.model.start_chat(enable_automatic_function_calling=True)
 

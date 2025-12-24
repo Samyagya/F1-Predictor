@@ -177,9 +177,16 @@ with tab3:
         # Add User Message
         st.session_state.chat_history.append({"role": "user", "content": prompt})
         
-        # Generate Bot Response
-        response = st.session_state.engineer.analyze_query(prompt)
-        st.session_state.chat_history.append({"role": "assistant", "content": response})
+        # --- NEW: ANIMATION BLOCK ---
+        with st.status("🧠 AI is analyzing telemetry...", expanded=True) as status:
+            st.write("📡 Connecting to Pit Wall...")
+            
+            # Generate Bot Response
+            response = st.session_state.engineer.analyze_query(prompt)
+            
+            st.write("✅ Calculation Complete.")
+            status.update(label="Response Ready", state="complete", expanded=False)
+        # -----------------------------
         
-        # Force Reload to render messages in correct order
+        st.session_state.chat_history.append({"role": "assistant", "content": response})
         st.rerun()

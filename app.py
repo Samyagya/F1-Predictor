@@ -3,7 +3,6 @@ import pandas as pd
 import joblib
 import os
 import itertools
-import altair as alt
 from datetime import datetime
 
 # --- IMPORT BACKEND ---
@@ -12,7 +11,7 @@ try:
     from src.solve_strategy_battle import get_stint_time, load_artifacts, TOTAL_LAPS, solve_scenario
     from src.tyre_strategy import get_race_start_tyres
     from src.calendar_utils import get_next_race 
-    from src.ai_analyst import RaceEngineerAI # NEW IMPORT
+    from src.ai_analyst import RaceEngineerAI 
 except ImportError:
     st.error("Could not import 'src'. Make sure you are running this from the main folder!")
     st.stop()
@@ -23,7 +22,7 @@ st.set_page_config(page_title="F1 2026 Oracle", page_icon="🏎️", layout="wid
 # --- INITIALIZE CHATBOT ---
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = [
-        {"role": "assistant", "content": "Radio check. I'm your AI Race Engineer. Ask me about strategies (e.g., 'Strategy for Max at Monaco')."}
+        {"role": "assistant", "content": "Radio check. Ask me 'Who will win in Bahrain?' or 'Strategy for Lewis at Monza'."}
     ]
 
 if "engineer" not in st.session_state:
@@ -68,7 +67,6 @@ def run_scenario_analysis(driver_code, circuit_name, scenario_mode):
 # --- UI START ---
 st.title("🏎️ F1 2026 Strategy Oracle")
 
-# TABS
 tab1, tab2, tab3 = st.tabs(["🔮 Next Race Predictor", "🛠️ Strategy Workbench", "💬 AI Race Engineer"])
 
 # =========================================================
@@ -92,7 +90,6 @@ with tab1:
         
         for i, (name, code) in enumerate(driver_list):
             strat, desc, time = run_scenario_analysis(code, circuit_next, "Standard Q3")
-            # Bias for realism (Top cars are faster)
             bias = 0
             if code in ["VER", "HAM", "LEC", "NOR"]: bias = -5
             elif code in ["BOT", "HUL", "OCO"]: bias = +10
@@ -114,7 +111,6 @@ with tab1:
                 "Gap": gap_str
             })
         
-        st.success("🏁 Simulation Complete!")
         c1, c2, c3 = st.columns(3)
         with c2: 
             st.markdown(f"### 🥇 1st Place")
@@ -170,24 +166,20 @@ with tab2:
 # =========================================================
 with tab3:
     st.header("💬 Pit Wall Comms")
-    st.caption("Ask questions like: 'What is the strategy for Hamilton at Silverstone?' or 'Pit loss in Monaco?'")
     
-    # Display History
+    # 1. Display History (Rendered from top to bottom)
     for message in st.session_state.chat_history:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # User Input
-    if prompt := st.chat_input("Enter your message to the Pit Wall..."):
-        # 1. User Message
+    # 2. Handle Input (Fixed at bottom)
+    if prompt := st.chat_input("Ask: 'Who will win in Bahrain?' or 'Strategy for Max at Monza'"):
+        # Add User Message
         st.session_state.chat_history.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
-        # 2. AI Response
-        with st.chat_message("assistant"):
-            with st.spinner("Calculating..."):
-                response = st.session_state.engineer.analyze_query(prompt)
-                st.markdown(response)
         
+        # Generate Bot Response
+        response = st.session_state.engineer.analyze_query(prompt)
         st.session_state.chat_history.append({"role": "assistant", "content": response})
+        
+        # Force Reload to render messages in correct order
+        st.rerun()

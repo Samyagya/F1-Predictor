@@ -12,12 +12,22 @@ try:
     from src.solve_strategy_battle import get_stint_time, load_artifacts, TOTAL_LAPS, solve_scenario
     from src.tyre_strategy import get_race_start_tyres
     from src.calendar_utils import get_next_race 
+    from src.ai_analyst import RaceEngineerAI # NEW IMPORT
 except ImportError:
     st.error("Could not import 'src'. Make sure you are running this from the main folder!")
     st.stop()
 
 # --- CONFIG ---
 st.set_page_config(page_title="F1 2026 Oracle", page_icon="🏎️", layout="wide")
+
+# --- INITIALIZE CHATBOT ---
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = [
+        {"role": "assistant", "content": "Radio check. I'm your AI Race Engineer. Ask me about strategies (e.g., 'Strategy for Max at Monaco')."}
+    ]
+
+if "engineer" not in st.session_state:
+    st.session_state.engineer = RaceEngineerAI()
 
 # --- FULL 2026 GRID ---
 DRIVERS = {
@@ -41,19 +51,14 @@ CIRCUITS = [
     "Baku", "Singapore", "Austin", "Mexico City", "Las Vegas", "Yas Marina"
 ]
 
-# --- HELPER: TIME FORMATTER (HH:MM:SS) ---
+# --- HELPER: TIME FORMATTER ---
 def format_time(seconds):
-    """Converts seconds to '1h 32m 12.45s' format"""
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
     secs = seconds % 60
-    
-    if hours > 0:
-        return f"{hours}h {minutes}m {secs:05.2f}s"
-    else:
-        return f"{minutes}m {secs:05.2f}s"
+    return f"{hours}h {minutes}m {secs:05.2f}s" if hours > 0 else f"{minutes}m {secs:05.2f}s"
 
-# --- HELPER: RUN ONE SCENARIO ---
+# --- HELPER: RUN SCENARIO ---
 def run_scenario_analysis(driver_code, circuit_name, scenario_mode):
     model, encoder = load_artifacts()
     pit_loss = get_pit_loss(circuit_name)
@@ -64,7 +69,7 @@ def run_scenario_analysis(driver_code, circuit_name, scenario_mode):
 st.title("🏎️ F1 2026 Strategy Oracle")
 
 # TABS
-tab1, tab2 = st.tabs(["🔮 Next Race Predictor", "🛠️ Strategy Workbench"])
+tab1, tab2, tab3 = st.tabs(["🔮 Next Race Predictor", "🛠️ Strategy Workbench", "💬 AI Race Engineer"])
 
 # =========================================================
 # TAB 1: NEXT RACE PREDICTOR
@@ -72,8 +77,6 @@ tab1, tab2 = st.tabs(["🔮 Next Race Predictor", "🛠️ Strategy Workbench"])
 with tab1:
     next_race = get_next_race()
     circuit_next = next_race['circuit']
-    
-    # Format Date
     raw_date = datetime.strptime(next_race['date'], "%Y-%m-%d")
     formatted_date = raw_date.strftime("%d-%m-%Y")
     
@@ -82,46 +85,28 @@ with tab1:
     
     if st.button("🏆 Predict Race Winner", type="primary"):
         st.write(f"Simulating full 22-car grid battle at **{circuit_next}**...")
-        
         progress_bar = st.progress(0)
         results = []
         driver_list = list(DRIVERS.items())
         total_drivers = len(driver_list)
         
-        # Simulate Grid
         for i, (name, code) in enumerate(driver_list):
             strat, desc, time = run_scenario_analysis(code, circuit_next, "Standard Q3")
-            
-            # Skill Bias (Optional)
+            # Bias for realism (Top cars are faster)
             bias = 0
             if code in ["VER", "HAM", "LEC", "NOR"]: bias = -5
             elif code in ["BOT", "HUL", "OCO"]: bias = +10
-            
             final_time = time + bias
-            
-            results.append({
-                "Driver": name,
-                "Strategy": strat,
-                "Time_Sec": final_time # Keep raw float for sorting
-            })
+            results.append({"Driver": name, "Strategy": strat, "Time_Sec": final_time})
             progress_bar.progress((i + 1) / total_drivers)
             
-        # Sort by Fastest Time
         results.sort(key=lambda x: x['Time_Sec'])
-        
-        # CALCULATE GAPS & FORMAT TIME
         winner_time = results[0]['Time_Sec']
         
         final_table = []
         for res in results:
             gap = res['Time_Sec'] - winner_time
-            
-            # Format Gap
-            if gap == 0:
-                gap_str = "LEADER"
-            else:
-                gap_str = f"+{gap:.3f}s"
-                
+            gap_str = "LEADER" if gap == 0 else f"+{gap:.3f}s"
             final_table.append({
                 "Driver": res['Driver'],
                 "Strategy": res['Strategy'],
@@ -129,9 +114,7 @@ with tab1:
                 "Gap": gap_str
             })
         
-        # --- DISPLAY PODIUM ---
         st.success("🏁 Simulation Complete!")
-        
         c1, c2, c3 = st.columns(3)
         with c2: 
             st.markdown(f"### 🥇 1st Place")
@@ -143,10 +126,8 @@ with tab1:
             st.markdown(f"### 🥉 3rd Place")
             st.metric(label=final_table[2]['Driver'], value=final_table[2]['Gap'])
             
-        # --- FULL CLASSIFICATION TABLE ---
         st.divider()
         st.subheader("Full Race Classification")
-        
         df_display = pd.DataFrame(final_table)
         df_display.index += 1
         st.dataframe(df_display, use_container_width=True)
@@ -156,7 +137,6 @@ with tab1:
 # =========================================================
 with tab2:
     st.markdown("### Race Weekend Simulator")
-    
     c1, c2 = st.columns(2)
     with c1:
         sel_driver = st.selectbox("Select Driver", list(DRIVERS.keys()), key="wb_driver")
@@ -172,11 +152,9 @@ with tab2:
         ]
         
         st.subheader(f"Strategic Report: {sel_driver} @ {sel_circuit}")
-        
         for title, mode, note in scenarios:
             with st.spinner(f"Simulating {title}..."):
                 strategy_type, strategy_desc, race_time = run_scenario_analysis(driver_code, sel_circuit, mode)
-                
                 with st.container():
                     st.markdown(f"#### {title}")
                     st.caption(note)
@@ -186,3 +164,30 @@ with tab2:
                     with col_b:
                         st.metric("Total Time", format_time(race_time))
                     st.divider()
+
+# =========================================================
+# TAB 3: AI RACE ENGINEER (CHATBOT)
+# =========================================================
+with tab3:
+    st.header("💬 Pit Wall Comms")
+    st.caption("Ask questions like: 'What is the strategy for Hamilton at Silverstone?' or 'Pit loss in Monaco?'")
+    
+    # Display History
+    for message in st.session_state.chat_history:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    # User Input
+    if prompt := st.chat_input("Enter your message to the Pit Wall..."):
+        # 1. User Message
+        st.session_state.chat_history.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        # 2. AI Response
+        with st.chat_message("assistant"):
+            with st.spinner("Calculating..."):
+                response = st.session_state.engineer.analyze_query(prompt)
+                st.markdown(response)
+        
+        st.session_state.chat_history.append({"role": "assistant", "content": response})

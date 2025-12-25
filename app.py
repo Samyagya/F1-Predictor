@@ -172,32 +172,43 @@ with tab2:
                     st.divider()
 
 # =========================================================
-# TAB 3: AI RACE ENGINEER (LLM POWERED)
+# TAB 3: AI RACE ENGINEER (FIXED LAYOUT)
 # =========================================================
 with tab3:
     st.header("💬 Intelligent Pit Wall")
-    
-    if not api_key:
-        st.info("Please configure the API Key to use the chatbot.")
-    else:
-        for message in st.session_state.chat_history:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
 
-        if prompt := st.chat_input("Ask anything: 'Strategy for Max if he has no softs?'"):
+    # 1. Create a container for the chat history (This keeps messages above the input)
+    chat_container = st.container()
+
+    # 2. Render Existing History inside the container
+    with chat_container:
+        if not api_key:
+            st.info("Please configure the API Key to use the chatbot.")
+        else:
+            for message in st.session_state.chat_history:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
+
+    # 3. Input Box (Always stays at the bottom)
+    if prompt := st.chat_input("Ask anything: 'Strategy for Max if he has no softs?'"):
+        
+        # A. Display User Message (Inside container!)
+        with chat_container:
             st.session_state.chat_history.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
                 st.markdown(prompt)
 
+            # B. Display Assistant Message (Inside container!)
             with st.chat_message("assistant"):
                 with st.status("🧠 Thinking & Simulating...", expanded=True) as status:
                     if "agent" in st.session_state:
                         response_text = st.session_state.agent.ask(prompt)
                         status.update(label="Transmission Received", state="complete", expanded=False)
                     else:
-                        response_text = "Connection Error: Agent not initialized (Check API Key)."
+                        response_text = "Connection Error: Agent not initialized."
                         status.update(label="Error", state="error")
                 
                 st.markdown(response_text)
             
+            # C. Save to History
             st.session_state.chat_history.append({"role": "assistant", "content": response_text})

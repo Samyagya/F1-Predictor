@@ -5,9 +5,10 @@ import os
 from datetime import datetime
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.preprocessing import LabelEncoder
+import sklearn.preprocessing
 
 # --- CONFIG ---
-DATA_PATH = 'data/race_data.csv'  # Make sure you have your main CSV here
+DATA_PATH = 'data/race_data.csv' 
 MODEL_PATH = 'models/f1_baseline_model.pkl'
 ENCODER_PATH = 'models/encoder.pkl'
 
@@ -16,7 +17,6 @@ def get_last_completed_race():
     today = datetime.now()
     schedule = fastf1.get_event_schedule(today.year)
     
-    # Filter for past races
     past_races = schedule[schedule['EventDate'] < today]
     if past_races.empty:
         return None
@@ -46,23 +46,26 @@ def update_dataset_and_train():
         return
 
     print(f"🚀 New Race Detected: {race_name}. Fetching data...")
-
-    # --- FIX: Create cache folder if it doesn't exist ---
+    
+    # --- FIX 1: Auto-create cache folder ---
     if not os.path.exists('cache'):
         os.makedirs('cache')
     
-    
     # 3. Fetch Data via FastF1
-    fastf1.Cache.enable_cache('cache') # Optional: Use a cache folder
+    fastf1.Cache.enable_cache('cache') 
     session = fastf1.get_session(last_race.year, last_race['RoundNumber'], 'R')
     session.load()
     
-    # --- FEATURE ENGINEERING (Simplified to match your Inputs) ---
+    # --- FIX 2: Handle Missing 'Rainfall' Column ---
     laps = session.laps.pick_quicklaps()
+    
+    # Check if Rainfall exists; if not, assume DRY (False/0)
+    if 'Rainfall' not in laps.columns:
+        print("⚠️ 'Rainfall' data missing. Assuming Dry conditions.")
+        laps['Rainfall'] = False
     
     new_data = []
     for index, lap in laps.iterrows():
-        # This must match the columns your App uses!
         new_data.append({
             'Driver': lap['Driver'],
             'Circuit': race_name,
@@ -70,9 +73,8 @@ def update_dataset_and_train():
             'TyreLife': lap['TyreLife'],
             'LapNumber': lap['LapNumber'],
             'Rainfall': 1 if lap['Rainfall'] else 0,
-            # Simple Fuel Calc: Start (110kg) - Burn (approx 1.7kg/lap)
             'FuelWeight': max(0, 110 - (lap['LapNumber'] * 1.7)),
-            'LapTime': lap['LapTime'].total_seconds() # Target Variable
+            'LapTime': lap['LapTime'].total_seconds() 
         })
         
     df_new = pd.DataFrame(new_data)
@@ -85,34 +87,22 @@ def update_dataset_and_train():
     # 5. RETRAIN MODEL
     print("🧠 Retraining Model...")
     
-    # Encode Categoricals
     le = LabelEncoder()
-    # We combine Driver/Circuit/Compound into one encoder or separate ones
-    # For simplicity, we assume your 'encoder.pkl' handles the transform
-    # But usually, you need to refit the encoder on new data
     for col in ['Driver', 'Circuit', 'Compound']:
         df_updated[col] = df_updated[col].astype(str)
         
-    # We use a trick: Fit encoder on ALL data
-    # (In production you might use OneHotEncoder, but let's stick to your format)
-    # NOTE: This creates a simple Ordinal encoder for the update
     df_encoded = df_updated.copy()
     feature_cols = ['Driver', 'Circuit', 'Compound', 'TyreLife', 'LapNumber', 'Rainfall', 'FuelWeight']
     
-    # Re-Fit Encoder
-    # Important: We need to save this new encoder so the App understands new Drivers/Circuits
-    import sklearn.preprocessing
     enc = sklearn.preprocessing.OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)
     df_encoded[feature_cols[:3]] = enc.fit_transform(df_updated[feature_cols[:3]])
     
     X = df_encoded[feature_cols]
-    y = df_updated['LapTime'].fillna(90) # Handle DNF/NaT simple fill
+    y = df_updated['LapTime'].fillna(90)
     
-    # Train
     model = GradientBoostingRegressor(n_estimators=100)
     model.fit(X, y)
     
-    # 6. Save Artifacts
     joblib.dump(model, MODEL_PATH)
     joblib.dump(enc, ENCODER_PATH)
     print("🎉 Model Retrained and Saved!")

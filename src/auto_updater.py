@@ -46,6 +46,11 @@ def update_dataset_and_train():
         return
 
     print(f"🚀 New Race Detected: {race_name}. Fetching data...")
+
+    # --- FIX: Create cache folder if it doesn't exist ---
+    if not os.path.exists('cache'):
+        os.makedirs('cache')
+    
     
     # 3. Fetch Data via FastF1
     fastf1.Cache.enable_cache('cache') # Optional: Use a cache folder

@@ -47,7 +47,7 @@
 
 | **AI Race Engineer** | **Strategy Workbench** |
 |:---:|:---:|
-| ![AI Engineer](image_7e9332.png) | ![Workbench](image_72c1e7.png) |
+| ![AI Engineer](screenshots/ai_engineer.png) | ![Workbench](screenshots/workbench.png) |
 | *Natural language strategy queries* | *Detailed pit stop analysis* |
 
 ---

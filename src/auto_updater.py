@@ -2,6 +2,7 @@ import fastf1
 import pandas as pd
 import joblib
 import os
+import time
 from datetime import datetime
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.preprocessing import LabelEncoder
@@ -51,13 +52,31 @@ def update_dataset_and_train():
     if not os.path.exists('cache'):
         os.makedirs('cache')
     
-    # 3. Fetch Data via FastF1
-    fastf1.Cache.enable_cache('cache') 
-    session = fastf1.get_session(last_race.year, last_race['RoundNumber'], 'R')
-    session.load()
-    
-    # --- FIX 2: Handle Missing 'Rainfall' Column ---
-    laps = session.laps.pick_quicklaps()
+    # 3. Fetch Data via FastF1 (with retry logic)
+    MAX_RETRIES = 3
+    RETRY_DELAY_SECONDS = 60
+
+    laps = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            print(f"🔄 Attempt {attempt}/{MAX_RETRIES}: Loading session data...")
+            fastf1.Cache.enable_cache('cache')
+            session = fastf1.get_session(last_race.year, last_race['RoundNumber'], 'R')
+            # Use explicit args — mirrors ingest_data.py; avoids loading heavy/unavailable data
+            session.load(laps=True, telemetry=False, weather=True, messages=False)
+            laps = session.laps.pick_quicklaps()
+            if laps.empty:
+                raise ValueError("No laps returned after filtering — data may not be ready yet.")
+            print(f"✅ Session loaded successfully on attempt {attempt}.")
+            break  # success — exit the retry loop
+        except Exception as e:
+            print(f"⚠️ Attempt {attempt}/{MAX_RETRIES} failed: {e}")
+            if attempt < MAX_RETRIES:
+                print(f"   Retrying in {RETRY_DELAY_SECONDS}s...")
+                time.sleep(RETRY_DELAY_SECONDS)
+            else:
+                print("❌ All retries exhausted. Aborting.")
+                raise  # Re-raise so GitHub Actions marks the run as failed
     
     # Check if Rainfall exists; if not, assume DRY (False/0)
     if 'Rainfall' not in laps.columns:

@@ -2,8 +2,8 @@ name: Weekly F1 Model Update
 
 on:
   schedule:
-    # Run at 02:00 UTC every Monday (After Race Weekend)
-    - cron: '0 2 * * 1'
+    # Run at 14:00 UTC every Monday (gives ~22-23hr buffer after Sunday race for FastF1 data to publish)
+    - cron: '0 14 * * 1'
   workflow_dispatch: # Allows you to run it manually button click
 
 permissions:

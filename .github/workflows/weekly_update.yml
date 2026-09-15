@@ -24,7 +24,8 @@ jobs:
 
     - name: Install Dependencies
       run: |
-        pip install pandas scikit-learn joblib fastf1
+        pip install --upgrade pip
+        pip install pandas scikit-learn joblib "fastf1>=3.8"
 
     - name: Run Auto-Updater
       run: python src/auto_updater.py

@@ -66,5 +66,18 @@
 
 1. **Clone the Repository**
    ```bash
-   git clone [https://github.com/samyagya/F1-Predictor.git]
+   git clone https://github.com/samyagya/F1-Predictor.git
    cd F1-Predictor
+   ```
+
+2. **Install Dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Launch the Application**
+   ```bash
+   streamlit run app.py
+   ```
+
+For a comprehensive beginner's walkthrough explaining every script and command in detail, see the [User Guide](localdocs/guide.md).

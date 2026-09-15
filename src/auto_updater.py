@@ -5,8 +5,64 @@ import os
 import time
 from datetime import datetime
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.preprocessing import LabelEncoder
 import sklearn.preprocessing
+
+# --- CIRCUIT NAME MAP ---
+# FastF1 EventName strings -> short names used by the app and physics engine
+# This ensures the encoder trains on the same names the app uses at inference.
+CIRCUIT_NAME_MAP = {
+    # Bahrain
+    'Bahrain Grand Prix': 'Sakhir',
+    'Pre-Season Testing': 'Sakhir',
+    # Saudi Arabia
+    'Saudi Arabian Grand Prix': 'Jeddah',
+    # Australia
+    'Australian Grand Prix': 'Albert Park',
+    # Japan
+    'Japanese Grand Prix': 'Suzuka',
+    # China
+    'Chinese Grand Prix': 'Shanghai',
+    # Miami
+    'Miami Grand Prix': 'Miami',
+    # Emilia Romagna
+    'Emilia Romagna Grand Prix': 'Imola',
+    # Monaco
+    'Monaco Grand Prix': 'Monaco',
+    # Canada
+    'Canadian Grand Prix': 'Montreal',
+    # Spain
+    'Spanish Grand Prix': 'Barcelona',
+    # Austria
+    'Austrian Grand Prix': 'Red Bull Ring',
+    # Britain
+    'British Grand Prix': 'Silverstone',
+    # Hungary
+    'Hungarian Grand Prix': 'Hungaroring',
+    # Belgium
+    'Belgian Grand Prix': 'Spa',
+    # Netherlands
+    'Dutch Grand Prix': 'Zandvoort',
+    # Italy
+    'Italian Grand Prix': 'Monza',
+    # Azerbaijan
+    'Azerbaijan Grand Prix': 'Baku',
+    # Singapore
+    'Singapore Grand Prix': 'Singapore',
+    # United States
+    'United States Grand Prix': 'Austin',
+    # Mexico
+    'Mexico City Grand Prix': 'Mexico City',
+    'Mexican Grand Prix': 'Mexico City',
+    # Brazil
+    'São Paulo Grand Prix': 'Interlagos',
+    'Brazilian Grand Prix': 'Interlagos',
+    # Las Vegas
+    'Las Vegas Grand Prix': 'Las Vegas',
+    # Qatar
+    'Qatar Grand Prix': 'Lusail',
+    # Abu Dhabi
+    'Abu Dhabi Grand Prix': 'Yas Marina',
+}
 
 # --- CONFIG ---
 DATA_PATH = 'data/race_data.csv' 
@@ -42,8 +98,10 @@ def update_dataset_and_train():
         return
 
     race_name = last_race['EventName']
-    if race_name in known_races:
-        print(f"✅ Data for {race_name} is already up to date. No action needed.")
+    # Map to short circuit name for duplicate-check consistency
+    circuit_short_name = CIRCUIT_NAME_MAP.get(race_name, race_name)
+    if circuit_short_name in known_races:
+        print(f"✅ Data for {circuit_short_name} is already up to date. No action needed.")
         return
 
     print(f"🚀 New Race Detected: {race_name}. Fetching data...")
@@ -83,17 +141,22 @@ def update_dataset_and_train():
         print("⚠️ 'Rainfall' data missing. Assuming Dry conditions.")
         laps['Rainfall'] = False
     
+    # Map the full event name to a short circuit name that matches the app's naming
+    circuit_short_name = CIRCUIT_NAME_MAP.get(race_name, race_name)
+    if circuit_short_name == race_name:
+        print(f"⚠️ '{race_name}' not found in CIRCUIT_NAME_MAP. Storing as-is. Add it to the map in auto_updater.py.")
+
     new_data = []
     for index, lap in laps.iterrows():
         new_data.append({
             'Driver': lap['Driver'],
-            'Circuit': race_name,
+            'Circuit': circuit_short_name,  # Use short name to match app inference
             'Compound': lap['Compound'],
             'TyreLife': lap['TyreLife'],
             'LapNumber': lap['LapNumber'],
             'Rainfall': 1 if lap['Rainfall'] else 0,
             'FuelWeight': max(0, 110 - (lap['LapNumber'] * 1.7)),
-            'LapTime': lap['LapTime'].total_seconds() 
+            'LapTime': lap['LapTime'].total_seconds()
         })
         
     df_new = pd.DataFrame(new_data)
@@ -105,8 +168,7 @@ def update_dataset_and_train():
 
     # 5. RETRAIN MODEL
     print("🧠 Retraining Model...")
-    
-    le = LabelEncoder()
+
     for col in ['Driver', 'Circuit', 'Compound']:
         df_updated[col] = df_updated[col].astype(str)
         

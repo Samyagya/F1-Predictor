@@ -1,6 +1,7 @@
 import joblib
 import pandas as pd
 import os
+from src.tyre_strategy import get_race_start_tyres
 
 # --- PATHS ---
 MODEL_PATH = 'models/f1_baseline_model.pkl'
@@ -66,20 +67,50 @@ def get_stint_time(model, encoder, driver_code, circuit, compound, laps, start_l
 def solve_scenario(model, encoder, driver_code, circuit, pit_loss, traffic, constraints, mode, fast_mode=False, tyre_constraints=None):
     """
     Calculates the best strategy (1-stop vs 2-stop).
+    Uses the qualifying mode to determine which tyre compounds are available.
     """
-    strategies = []
-    
-    # --- STRATEGY OPTIONS ---
+    # --- DETERMINE AVAILABLE COMPOUNDS FROM TYRE INVENTORY ---
+    # get_race_start_tyres() returns the driver's actual tyre inventory
+    # after qualifying for the given mode (Standard Q3 / Knocked out in Q2 / Q1).
+    inventory = get_race_start_tyres(driver_code, mode)
+    # Find which compound types have at least one NEW set remaining
+    new_compounds = set(
+        t['compound'] for t in inventory if t['status'] == 'NEW'
+    )
+    # All compound types available (new or used)
+    all_compounds = set(t['compound'] for t in inventory)
+
+    # --- ALL STRATEGY TEMPLATES ---
     # S = Soft, M = Medium, H = Hard
-    options = [
-        ['SOFT', 'MEDIUM'],          # 1-Stop
-        ['MEDIUM', 'HARD'],          # 1-Stop
-        ['SOFT', 'HARD'],            # 1-Stop
-        ['SOFT', 'MEDIUM', 'SOFT'],  # 2-Stop Aggressive
-        ['SOFT', 'MEDIUM', 'MEDIUM'],# 2-Stop Balanced
-        ['MEDIUM', 'HARD', 'MEDIUM'] # 2-Stop Conservative
+    all_options = [
+        ['SOFT', 'MEDIUM'],           # 1-Stop
+        ['MEDIUM', 'HARD'],           # 1-Stop
+        ['SOFT', 'HARD'],             # 1-Stop
+        ['SOFT', 'MEDIUM', 'SOFT'],   # 2-Stop Aggressive
+        ['SOFT', 'MEDIUM', 'MEDIUM'], # 2-Stop Balanced
+        ['MEDIUM', 'HARD', 'MEDIUM'], # 2-Stop Conservative
     ]
-    
+
+    # Filter strategy templates:
+    # A strategy is valid if ALL its compounds exist in the driver's inventory
+    # AND each compound used as the FIRST (starting) stint has a new set
+    # (since you start on new tyres in a real race)
+    options = []
+    for template in all_options:
+        start_compound = template[0]
+        # Starting compound must be NEW (F1 race start rule)
+        if start_compound not in new_compounds:
+            continue
+        # All other compounds must be available (new or used)
+        if not all(c in all_compounds for c in template[1:]):
+            continue
+        options.append(template)
+
+    # Fallback: if qualifying mode filtered everything out, use all options
+    # (handles edge cases and avoids returning 'Unknown' strategy)
+    if not options:
+        options = all_options
+
     # Race Distance (Approx 57 laps for Bahrain standard)
     TOTAL_LAPS = 57
     
@@ -117,8 +148,8 @@ def solve_scenario(model, encoder, driver_code, circuit, pit_loss, traffic, cons
             if i > 0:
                 current_time += pit_loss
             
-            # Calculate Driving Time
-            stint_time = get_stint_time(model, encoder, driver_code, circuit, compound, stint_len, current_lap)
+            # Calculate Driving Time (traffic_factor models racing in traffic)
+            stint_time = get_stint_time(model, encoder, driver_code, circuit, compound, stint_len, current_lap, traffic_factor=traffic)
             current_time += stint_time
             current_lap += stint_len
             

@@ -26,13 +26,13 @@ def run_strategy_simulation(driver_name: str, circuit: str, constraints_descript
     circuit = circuit.capitalize()
     if "bahrain" in circuit.lower(): circuit = "Sakhir"
     
-    # 3. Parse Constraints 
+    # 3. Parse Constraints
     tyre_constraints = []
-    desc = constraints_description.lower()
-    
-    if "no new soft" in desc: tyre_constraints.append({'compound': 'SOFT', 'status': 'NEW', 'limit': 0})
-    if "no new medium" in desc: tyre_constraints.append({'compound': 'MEDIUM', 'status': 'NEW', 'limit': 0})
-    if "no new hard" in desc: tyre_constraints.append({'compound': 'HARD', 'status': 'NEW', 'limit': 0})
+    constraint_text = constraints_description.lower()
+
+    if "no new soft" in constraint_text: tyre_constraints.append({'compound': 'SOFT', 'status': 'NEW', 'limit': 0})
+    if "no new medium" in constraint_text: tyre_constraints.append({'compound': 'MEDIUM', 'status': 'NEW', 'limit': 0})
+    if "no new hard" in constraint_text: tyre_constraints.append({'compound': 'HARD', 'status': 'NEW', 'limit': 0})
     
     # 4. Run Simulation
     try:

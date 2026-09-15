@@ -16,6 +16,7 @@ def get_pit_loss(circuit):
         'Sakhir': 22.5,
         'Shanghai': 24.0,  # China
         'Miami': 23.0,
+        'Imola': 23.0,     # Emilia Romagna GP
         'Barcelona': 23.0, # Spanish GP (Catalunya)
         'Madrid': 23.5,    # NEW: Madrid Street Circuit (Est. similar to Valencia/Baku)
         'Las Vegas': 23.0,

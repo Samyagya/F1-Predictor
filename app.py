@@ -72,8 +72,16 @@ if "chat_history" not in st.session_state:
 if "agent" not in st.session_state and api_key:
     try:
         st.session_state.agent = F1Agent(api_key)
+        st.session_state.last_api_key = api_key
     except Exception as e:
         st.error(f"Failed to initialize AI: {e}")
+elif api_key and st.session_state.get("last_api_key") != api_key:
+    # API key changed — reinitialise agent with the new key
+    try:
+        st.session_state.agent = F1Agent(api_key)
+        st.session_state.last_api_key = api_key
+    except Exception as e:
+        st.error(f"Failed to reinitialize AI with new key: {e}")
 
 # --- TABS ---
 st.title("🏎️ F1 2026 Strategy Oracle")

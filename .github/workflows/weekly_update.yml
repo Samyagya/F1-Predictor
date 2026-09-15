@@ -2,9 +2,9 @@ name: Weekly F1 Model Update
 
 on:
   schedule:
-    # Run at 14:00 UTC every Monday (gives ~22-23hr buffer after Sunday race for FastF1 data to publish)
-    - cron: '0 14 * * 1'
-  workflow_dispatch: # Allows you to run it manually button click
+    # Run at 14:00 UTC every Tuesday (gives ~46hr buffer after Sunday race for FastF1 telemetry to be fully published)
+    - cron: '0 14 * * 2'
+  workflow_dispatch: # Allows you to run it manually with a button click
 
 permissions:
   contents: write
@@ -32,5 +32,5 @@ jobs:
     - name: Commit and Push Changes
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
-        commit_message: "🤖 Auto-Update: Retrained model with latest race data"
+        commit_message: "Auto-Update: Retrained model with latest race data"
         file_pattern: 'models/*.pkl data/*.csv'

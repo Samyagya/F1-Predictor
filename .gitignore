@@ -26,3 +26,6 @@ cache/*
 # (This ensures the robot can save new races to your repo)
 !data/*.csv
 !models/*.pkl
+
+# Local documentation (kept on local machine, excluded from GitHub)
+localdocs/
